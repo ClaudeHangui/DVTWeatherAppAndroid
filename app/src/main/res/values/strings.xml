@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">DVT Weather App Android</string>
+    <string name="dvt_open_weather_api_key">f99ec3fc60109a86f36930333a03b382</string>
+    <string name="dvt_google_place_api_key">AIzaSyDX8QoEk3_5k_6xwrKkN5-U58YTae_XARs</string>
+    <string name="action_settings">Settings</string>
+    <string name="request_again">Request again</string>
+    <string name="permissions_required">Permissions required</string>
+    <string name="rationale_permissions">Rationale: %s</string>
+    <string name="granted_permissions">Granted: %s</string>
+    <string name="permanently_denied_permissions">Permanently denied: %s</string>
+
+    <string name="error_bad_request_desc">An unexpected error occurred. Try again or exit and retry later. If the problem persists please reach out to our help center </string>
+    <string name="error_network_desc">You don\'t seem to be connected to the internet. Please check your connection and try again or exit and retry later</string>
+    <string name="error_forbidden_desc">We are sorry but, you are not permitted to see this. Please exit and contact the help center or retry later</string>
+    <string name="error_gateway_desc">An error occurred and we\'re working to fix the problem. Please exit and contact the help center or retry later</string>
+    <string name="error_not_found_desc">We can\'t seem to find the content you are looking for. Please exit and retry later </string>
+    <string name="error_internal_server_desc">We\'re working on it and we\'ll get it fixed as soon as possible. Please exit and contact the help center or retry later </string>
+    <string name="error_unauthorised_desc">You are not authorised to see this content. Please exit and contact the help center or retry later </string>
+    <string name="error_unknown_desc">An unexpected error occurred. Try again or exit and retry later </string>
+    <string name="title_activity_bookmarks">BookmarksActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="title_activity_map">Bookmarks Map</string>
+</resources>

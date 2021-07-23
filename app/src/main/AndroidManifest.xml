@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.changui.dvtweatherappandroid">
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <application
+        android:name=".DvtWeatherApp"
+        android:allowBackup="true"
+        android:foregroundServiceType="location"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DVTWeatherAppAndroid">
+        <meta-data android:name="com.google.android.geo.API_KEY"
+            android:value="@string/dvt_google_place_api_key"
+            />
+        <activity
+            android:name=".view.MapActivity"
+            android:label="@string/title_activity_map"
+            android:theme="@style/Theme.DVTWeatherAppAndroid.NoActionBar"/>
+        <activity
+            android:name=".view.BookmarksActivity"
+            android:label="@string/title_activity_bookmarks"
+            android:theme="@style/Theme.DVTWeatherAppAndroid.NoActionBar" />
+        <activity android:name=".view.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
