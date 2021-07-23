@@ -66,7 +66,7 @@ object NonStaticProvision {
             appContext,
             WeatherForecastDb::class.java,
             DB_NAME
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides

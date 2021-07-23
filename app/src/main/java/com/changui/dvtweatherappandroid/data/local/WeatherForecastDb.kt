@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [WeatherForecastLocalModel::class, WeatherLocationBookmarkLocalModel::class, CurrentWeatherLocalModel::class],
-    version = 1
+    version = 2
 )
 abstract class WeatherForecastDb : RoomDatabase() {
     abstract fun weatherForecastDao(): WeatherForecastDao
