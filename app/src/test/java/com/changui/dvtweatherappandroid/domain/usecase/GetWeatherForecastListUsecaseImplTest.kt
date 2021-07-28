@@ -1,17 +1,14 @@
 package com.changui.dvtweatherappandroid.domain.usecase
 
-import arrow.core.Either
 import com.changui.dvtweatherappandroid.domain.error.Failure
-import com.changui.dvtweatherappandroid.domain.error.FailureWithCache
 import com.changui.dvtweatherappandroid.domain.model.WeatherForecastUIModelListItem
 import com.changui.dvtweatherappandroid.domain.model.WeatherPayloadParams
 import com.changui.dvtweatherappandroid.domain.repository.WeatherForecastRepository
-import com.changui.dvtweatherappandroid.domain.usecase.weatherforecast.GetWeatherForecastListResult
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import com.changui.dvtweatherappandroid.domain.usecase.weatherforecast.GetWeatherForecastListUsecaseImpl
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import org.amshove.kluent.`should equal`
 import org.amshove.kluent.shouldBeInstanceOf
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -30,6 +27,7 @@ internal class GetWeatherForecastListUsecaseImplTest {
         getWeatherForecastUsecase = GetWeatherForecastListUsecaseImpl(repository)
     }
 
+
     @Test
     fun `should return GetWeatherForecastUsecaseSuccess when repository sends Either type of value Right`() {
         val expectedSuccessResponse = mutableListOf(
@@ -38,18 +36,15 @@ internal class GetWeatherForecastListUsecaseImplTest {
             WeatherForecastUIModelListItem(288.67, "Wednesday")
         )
 
-        coEvery { repository.fetchWeatherForecastList(params) } returns Either.Right(
+        coEvery { repository.fetchWeatherForecastList(params) } returns ResultState.Success(
             expectedSuccessResponse
         )
 
         val actualWeatherForecasts = runBlocking {
-            getWeatherForecastUsecase.execute(params)
+            getWeatherForecastUsecase.invoke(params)
         }
 
-        actualWeatherForecasts shouldBeInstanceOf GetWeatherForecastListResult.GetForecastWeatherSuccess::class
-        actualWeatherForecasts `should equal` GetWeatherForecastListResult.GetForecastWeatherSuccess(
-            expectedSuccessResponse
-        )
+        actualWeatherForecasts shouldBeInstanceOf ResultState.Success::class
     }
 
     @Nested
@@ -60,24 +55,20 @@ internal class GetWeatherForecastListUsecaseImplTest {
         @Test
         fun `should return bad request error if request failed`() {
             remoteFailure = Failure.BadRequestError
-            val expectedFailure = FailureWithCache(remoteFailure, cacheItems)
-            coEvery { repository.fetchWeatherForecastList(params) } returns Either.Left(expectedFailure)
-            val actualFailure = runBlocking { getWeatherForecastUsecase.execute(params) }
-            actualFailure shouldBeInstanceOf GetWeatherForecastListResult.GetForecastWeatherFailure::class
+            coEvery { repository.fetchWeatherForecastList(params) } returns ResultState.Error(remoteFailure, cacheItems)
+            val actualFailure = runBlocking { getWeatherForecastUsecase.invoke(params) }
+            actualFailure shouldBeInstanceOf ResultState.Error::class
         }
 
         @Test
         fun `should return gateway error if request failed`() {
             remoteFailure = Failure.GatewayError
-            val expectedFailure = FailureWithCache(remoteFailure, cacheItems)
 
-            coEvery { repository.fetchWeatherForecastList(params) } returns Either.Left(expectedFailure)
-            val actualFailure = runBlocking { getWeatherForecastUsecase.execute(params) }
+            coEvery { repository.fetchWeatherForecastList(params) } returns ResultState.Error(remoteFailure, cacheItems)
+            val actualFailure = runBlocking { getWeatherForecastUsecase.invoke(params) }
 
-            actualFailure shouldBeInstanceOf GetWeatherForecastListResult.GetForecastWeatherFailure::class
-            actualFailure `should equal` GetWeatherForecastListResult.GetForecastWeatherFailure(
-                expectedFailure
-            )
+            actualFailure shouldBeInstanceOf ResultState.Error::class
         }
     }
+
 }

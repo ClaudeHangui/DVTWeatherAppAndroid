@@ -2,13 +2,12 @@ package com.changui.dvtweatherappandroid.domain.usecase
 
 import com.changui.dvtweatherappandroid.domain.model.WeatherLocationBookmarkUIModel
 import com.changui.dvtweatherappandroid.domain.repository.WeatherLocationRepository
-import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.GetWeatherLocationBookmarksResult
 import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.GetWeatherLocationBookmarksUseCaseImpl
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import org.amshove.kluent.`should equal`
-import org.amshove.kluent.shouldBeInstanceOf
+import org.amshove.kluent.`should be equal to`
+import org.amshove.kluent.shouldNotEqual
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -36,11 +35,11 @@ internal class GetWeatherLocationBookmarksUseCaseImplTest {
         coEvery { repository.getWeatherLocationBookmarks() } returns expectedSuccessResponse
 
         val actualWeatherForecastBookmarks = runBlocking {
-            getWeatherLocationBookmarksUseCase.execute()
+            getWeatherLocationBookmarksUseCase.invoke()
         }
 
-        actualWeatherForecastBookmarks shouldBeInstanceOf  GetWeatherLocationBookmarksResult.GetWeatherLocationBookmarksSuccess::class
-        actualWeatherForecastBookmarks `should equal` GetWeatherLocationBookmarksResult.GetWeatherLocationBookmarksSuccess(expectedSuccessResponse)
+        actualWeatherForecastBookmarks shouldNotEqual null
+        actualWeatherForecastBookmarks.size `should be equal to` 3
     }
 
 }

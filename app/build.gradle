@@ -79,7 +79,6 @@ dependencies {
     def retrofit_version = "2.9.0"
     def okhttp_version = "4.9.0"
     def room_version = "2.3.0"
-    def arrow_version = "0.13.2"
     def mockWebserverVersion = "4.7.2"
     def coroutines_version = "1.4.2"
 
@@ -91,7 +90,6 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     implementation 'androidx.fragment:fragment-ktx:1.3.5'
     implementation "androidx.recyclerview:recyclerview:1.1.0"
-    implementation "io.arrow-kt:arrow-core:$arrow_version"
     implementation 'com.google.android.gms:play-services-location:18.0.0'
     implementation 'com.google.android.gms:play-services-maps:17.0.1'
     implementation 'com.github.fondesa:kpermissions:3.2.1'

@@ -2,7 +2,7 @@ package com.changui.dvtweatherappandroid.domain.usecase
 
 import com.changui.dvtweatherappandroid.domain.model.WeatherLocationBookmarkUIModel
 import com.changui.dvtweatherappandroid.domain.repository.WeatherLocationRepository
-import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.BookmarkWeatherLocationResult
+import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.BookmarkWeatherLocationUsecase
 import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.BookmarkWeatherLocationUsecaseImpl
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -18,7 +18,8 @@ internal class BookmarkWeatherForecastUsecaseImplTest {
 
     private lateinit var repository: WeatherLocationRepository
     private lateinit var bookmarkWeatherForecastUsecase: BookmarkWeatherLocationUsecaseImpl
-    private val params = WeatherLocationBookmarkUIModel("placeId", "paris", "paris, France", 35.6783, -120.567)
+    private val params = BookmarkWeatherLocationUsecase.BookmarkWeatherLocationParams (
+        WeatherLocationBookmarkUIModel("placeId", "paris", "paris, France", 35.6783, -120.567))
 
     @BeforeEach
     fun setUp() {
@@ -26,12 +27,14 @@ internal class BookmarkWeatherForecastUsecaseImplTest {
         bookmarkWeatherForecastUsecase = BookmarkWeatherLocationUsecaseImpl(repository)
     }
 
+
     @Test
     fun `should call the repository to bookmark a forecast weather item`(){
-        coEvery { repository.saveToBookmarksWeatherLocation(params) } returns Unit
-        val actualResponse = runBlocking { bookmarkWeatherForecastUsecase.execute(params) }
-        coVerify(exactly = 1) { repository.saveToBookmarksWeatherLocation(params) }
-        actualResponse shouldBeInstanceOf  BookmarkWeatherLocationResult::class
+        coEvery { repository.saveToBookmarksWeatherLocation(params.weatherLocation) } returns Unit
+        val actualResponse = runBlocking { bookmarkWeatherForecastUsecase.invoke(params) }
+        coVerify(exactly = 1) { repository.saveToBookmarksWeatherLocation(params.weatherLocation) }
+        actualResponse shouldBeInstanceOf  Unit::class
     }
+
 
 }

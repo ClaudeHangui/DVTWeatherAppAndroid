@@ -1,12 +1,10 @@
 package com.changui.dvtweatherappandroid.domain.usecase
 
-import arrow.core.Either
 import com.changui.dvtweatherappandroid.domain.error.Failure
-import com.changui.dvtweatherappandroid.domain.error.FailureWithCache
 import com.changui.dvtweatherappandroid.domain.model.CurrentWeatherUIModel
 import com.changui.dvtweatherappandroid.domain.model.WeatherPayloadParams
 import com.changui.dvtweatherappandroid.domain.repository.WeatherForecastRepository
-import com.changui.dvtweatherappandroid.domain.usecase.currentweather.GetCurrentWeatherResult
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import com.changui.dvtweatherappandroid.domain.usecase.currentweather.GetCurrentWeatherUseCaseImpl
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -30,18 +28,19 @@ internal class GetCurrentWeatherUseCaseImplTest {
         getCurrentWeatherUseCase = GetCurrentWeatherUseCaseImpl(repository)
     }
 
+
     @Test
     fun `should return GetCurrentWeatherSuccess when repository sends Either type of value Right`() {
         val expectedSuccessResponse = CurrentWeatherUIModel("cloud", 283.95, 286.61, 288.28)
-        coEvery { repository.fetchCurrentWeather(params) } returns Either.Right(
+        coEvery { repository.fetchCurrentWeather(params) } returns ResultState.Success(
             expectedSuccessResponse
         )
 
         val actualCurrentWeather = runBlocking {
-            getCurrentWeatherUseCase.execute(params)
+            getCurrentWeatherUseCase.invoke(params)
         }
-        actualCurrentWeather shouldBeInstanceOf GetCurrentWeatherResult.GetCurrentWeatherSuccess::class
-        actualCurrentWeather `should equal` GetCurrentWeatherResult.GetCurrentWeatherSuccess(
+        actualCurrentWeather shouldBeInstanceOf ResultState.Success::class
+        actualCurrentWeather `should equal` ResultState.Success(
             expectedSuccessResponse
         )
     }
@@ -54,21 +53,20 @@ internal class GetCurrentWeatherUseCaseImplTest {
         @Test
         fun `should return server error if request failed`() {
             remoteFailure = Failure.ServerError
-            val failureWithCache = FailureWithCache(remoteFailure, expectedFailureResponse)
-            coEvery { repository.fetchCurrentWeather(params) } returns Either.Left(failureWithCache)
-            val failureResponse = runBlocking { getCurrentWeatherUseCase.execute(params) }
-            failureResponse shouldBeInstanceOf GetCurrentWeatherResult.GetCurrentWeatherFailure::class
+            coEvery { repository.fetchCurrentWeather(params) } returns ResultState.Error(remoteFailure, expectedFailureResponse)
+            val failureResponse = runBlocking { getCurrentWeatherUseCase.invoke(params) }
+            failureResponse shouldBeInstanceOf ResultState.Error::class
         }
 
         @Test
         fun `should return network error if request failed`() {
             remoteFailure = Failure.NetworkError
-            val failureWithCache = FailureWithCache(remoteFailure, expectedFailureResponse)
-            coEvery { repository.fetchCurrentWeather(params) } returns Either.Left(failureWithCache)
-            val failureResponse = runBlocking { getCurrentWeatherUseCase.execute(params) }
+            coEvery { repository.fetchCurrentWeather(params) } returns ResultState.Error(remoteFailure, expectedFailureResponse)
+            val failureResponse = runBlocking { getCurrentWeatherUseCase.invoke(params) }
 
-            failureResponse shouldBeInstanceOf GetCurrentWeatherResult.GetCurrentWeatherFailure::class
-            failureResponse `should equal` GetCurrentWeatherResult.GetCurrentWeatherFailure(failureWithCache)
+            failureResponse shouldBeInstanceOf ResultState.Error::class
+            failureResponse `should equal` ResultState.Error(remoteFailure, expectedFailureResponse)
         }
     }
+
 }

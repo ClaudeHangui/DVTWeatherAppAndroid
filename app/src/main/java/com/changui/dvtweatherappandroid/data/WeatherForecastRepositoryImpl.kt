@@ -1,6 +1,5 @@
 package com.changui.dvtweatherappandroid.data
 
-import arrow.core.Either
 import com.changui.dvtweatherappandroid.data.local.CurrentWeatherLocalDataStore
 import com.changui.dvtweatherappandroid.data.local.CurrentWeatherLocalModel
 import com.changui.dvtweatherappandroid.data.local.WeatherForecastLocalDataStore
@@ -10,13 +9,11 @@ import com.changui.dvtweatherappandroid.data.mapper.RemoteToLocalWeatherForecast
 import com.changui.dvtweatherappandroid.data.remote.CurrentWeatherRemoteDataStore
 import com.changui.dvtweatherappandroid.data.remote.WeatherForecastRemoteDataStore
 import com.changui.dvtweatherappandroid.domain.error.Failure
-import com.changui.dvtweatherappandroid.domain.error.FailureWithCache
 import com.changui.dvtweatherappandroid.domain.model.CurrentWeatherUIModel
 import com.changui.dvtweatherappandroid.domain.model.WeatherForecastUIModelListItem
 import com.changui.dvtweatherappandroid.domain.model.WeatherPayloadParams
 import com.changui.dvtweatherappandroid.domain.repository.WeatherForecastRepository
-import com.changui.dvtweatherappandroid.domain.scope.CoroutineDispatchers
-import kotlinx.coroutines.withContext
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import org.joda.time.LocalDate
 import javax.inject.Inject
 
@@ -27,46 +24,43 @@ class WeatherForecastRepositoryImpl @Inject constructor(
     private val weatherForecastRemoteDataStore: WeatherForecastRemoteDataStore,
     private val weatherForecastLocalDataStore: WeatherForecastLocalDataStore,
     private val currentWeatherLocalDataStore: CurrentWeatherLocalDataStore,
-    private val coroutineDispatchers: CoroutineDispatchers,
 ) : WeatherForecastRepository {
 
-    override suspend fun fetchCurrentWeather(params: WeatherPayloadParams): Either<FailureWithCache<CurrentWeatherUIModel>, CurrentWeatherUIModel> {
-        return currentWeatherRemoteDataStore.fetchCurrentWeather(params).fold(
-                {
-                    val localCurrentData = currentWeatherLocalDataStore.getCurrentData(params.placeId)
-                    Either.Left(localCurrentData.returnNullOrData(it))
-                },
-                {
-                    val mapResult = mapper.map(it, params.placeId)
-                    currentWeatherLocalDataStore.saveCurrentWeather(mapResult)
-                    val dbCache = currentWeatherLocalDataStore.getCurrentData(params.placeId)
-                    if (dbCache == null) Either.Right(CurrentWeatherUIModel.EMPTY) else Either.Right(
-                        dbCache.toUIModel()
-                    )
-                }
-            )
-    }
-
-    override suspend fun fetchWeatherForecastList(params: WeatherPayloadParams): Either<FailureWithCache<MutableList<WeatherForecastUIModelListItem>>, MutableList<WeatherForecastUIModelListItem>> {
-        return withContext(coroutineDispatchers.io) {
-            weatherForecastRemoteDataStore.fetchWeatherForecast(params).fold(
-                {
-                    val items = weatherForecastLocalDataStore.getWeatherForecastList().returnEmptyFailureOrData(
-                        it
-                    )
-                    Either.Left(items)
-                },
-                {
-                    val mapResult = weatherForecastMapper.map(it)
-                    weatherForecastLocalDataStore.clearAllWeatherForecast()
-                    weatherForecastLocalDataStore.saveWeatherForecasts(mapResult)
-                    val dbData = weatherForecastLocalDataStore.getWeatherForecastList()
-                    if (dbData.isNullOrEmpty()) Either.Right(mutableListOf())
-                    else Either.Right(dbData.toUIModelList())
-                }
-            )
+    override suspend fun fetchCurrentWeather(params: WeatherPayloadParams): ResultState<CurrentWeatherUIModel> {
+        return when(val result = currentWeatherRemoteDataStore.fetchCurrentWeather(params)) {
+            is ResultState.Success -> {
+                val mapResult = mapper.map(result.data, params.placeId)
+                currentWeatherLocalDataStore.saveCurrentWeather(mapResult)
+                val dbCache = currentWeatherLocalDataStore.getCurrentData(params.placeId)
+                if (dbCache == null) ResultState.Success(CurrentWeatherUIModel.EMPTY) else ResultState.Success(
+                    dbCache.toUIModel()
+                )
+            }
+            is ResultState.Error -> {
+                val localCurrentData = currentWeatherLocalDataStore.getCurrentData(params.placeId)
+                localCurrentData.returnNullOrData(result.failure)
+            }
         }
     }
+
+
+    override suspend fun fetchWeatherForecastList(params: WeatherPayloadParams): ResultState<MutableList<WeatherForecastUIModelListItem>> {
+        return when(val result = weatherForecastRemoteDataStore.fetchWeatherForecast(params)) {
+            is ResultState.Success -> {
+                val mapResult = weatherForecastMapper.map(result.data)
+                weatherForecastLocalDataStore.clearAllWeatherForecast()
+                weatherForecastLocalDataStore.saveWeatherForecasts(mapResult)
+                val dbData = weatherForecastLocalDataStore.getWeatherForecastList()
+                if (dbData.isNullOrEmpty()) ResultState.Success(mutableListOf())
+                else ResultState.Success(dbData.toUIModelList())
+            }
+            is ResultState.Error -> {
+                val localCache = weatherForecastLocalDataStore.getWeatherForecastList()
+                localCache.returnEmptyFailureOrData(result.failure)
+            }
+        }
+    }
+
 
     private fun String.toDay(): String {
         return LocalDate.parse(this.substringBefore(" ")).dayOfWeek().asText
@@ -88,15 +82,15 @@ class WeatherForecastRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun CurrentWeatherLocalModel?.returnNullOrData(failure: Failure): FailureWithCache<CurrentWeatherUIModel> {
+    private fun CurrentWeatherLocalModel?.returnNullOrData(failure: Failure): ResultState<CurrentWeatherUIModel> {
         return if (this == null) {
-            FailureWithCache(failure, CurrentWeatherUIModel.EMPTY)
-        } else FailureWithCache(failure, this.toUIModel())
+            ResultState.Error(failure, CurrentWeatherUIModel.EMPTY)
+        } else ResultState.Error(failure, this.toUIModel())
     }
 
-    private fun List<WeatherForecastLocalModel>?.returnEmptyFailureOrData(failure: Failure): FailureWithCache<MutableList<WeatherForecastUIModelListItem>> {
+    private fun List<WeatherForecastLocalModel>?.returnEmptyFailureOrData(failure: Failure): ResultState<MutableList<WeatherForecastUIModelListItem>> {
         return if (this.isNullOrEmpty()) {
-            FailureWithCache(failure, mutableListOf())
-        } else FailureWithCache(failure, this.toUIModelList())
+            ResultState.Error(failure, mutableListOf())
+        } else ResultState.Error(failure, this.toUIModelList())
     }
 }

@@ -9,7 +9,6 @@ import com.changui.dvtweatherappandroid.domain.model.UserLocationModel
 import com.changui.dvtweatherappandroid.domain.model.WeatherLocationBookmarkUIModel
 import com.changui.dvtweatherappandroid.domain.scope.CoroutineDispatchers
 import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.BookmarkWeatherLocationUsecase
-import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.GetWeatherLocationBookmarksResult
 import com.changui.dvtweatherappandroid.domain.usecase.bookmarkweather.GetWeatherLocationBookmarksUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,15 +44,15 @@ class BookmarksViewModel @Inject constructor(
     ) {
         viewModelScope.launch(dispatchers.main) {
             withContext(dispatchers.io) {
-                bookmarkWeatherLocationUsecase.invoke(
-                    WeatherLocationBookmarkUIModel(
-                        placeId,
-                        placeName,
-                        placeAddress,
-                        placeLatitude,
-                        placeLongitude
-                    )
+                bookmarkWeatherLocationUsecase.invoke( BookmarkWeatherLocationUsecase.BookmarkWeatherLocationParams(WeatherLocationBookmarkUIModel(
+                    placeId,
+                    placeName,
+                    placeAddress,
+                    placeLatitude,
+                    placeLongitude
                 )
+                ))
+
             }
         }
     }
@@ -61,8 +60,8 @@ class BookmarksViewModel @Inject constructor(
     fun getWeatherLocationBookmarks() {
         // loadingMutableLiveData.value = true
         viewModelScope.launch(dispatchers.main) {
-            val result = withContext(dispatchers.io) { getWeatherLocationBookmarksUseCase.invoke() } as GetWeatherLocationBookmarksResult.GetWeatherLocationBookmarksSuccess
-            weatherLocationBookmarkListMutableLiveData.value = result.bookmarks
+            val result = withContext(dispatchers.io) { getWeatherLocationBookmarksUseCase.invoke() }
+            weatherLocationBookmarkListMutableLiveData.value = result
             loadingMutableLiveData.value = false
         }
     }

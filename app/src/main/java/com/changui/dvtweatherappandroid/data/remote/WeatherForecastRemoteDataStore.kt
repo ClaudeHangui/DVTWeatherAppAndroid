@@ -1,28 +1,26 @@
 package com.changui.dvtweatherappandroid.data.remote
 
-import arrow.core.Either
-import com.changui.dvtweatherappandroid.domain.error.Failure
 import com.changui.dvtweatherappandroid.domain.model.WeatherPayloadParams
-import java.lang.Exception
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import javax.inject.Inject
 
 interface WeatherForecastRemoteDataStore {
-    suspend fun fetchWeatherForecast(params: WeatherPayloadParams): Either<Failure, FiveDayWeatherForecastApiResponse>
+    suspend fun fetchWeatherForecast(params: WeatherPayloadParams): ResultState<FiveDayWeatherForecastApiResponse>
 }
 
 class WeatherForecastRemoteDataStoreImpl @Inject constructor (
     private val apiService: WeatherApiService,
     private val errorFactory: WeatherForecastFailureFactory
 ) : WeatherForecastRemoteDataStore {
-    override suspend fun fetchWeatherForecast(params: WeatherPayloadParams): Either<Failure, FiveDayWeatherForecastApiResponse> {
+    override suspend fun fetchWeatherForecast(params: WeatherPayloadParams): ResultState<FiveDayWeatherForecastApiResponse> {
         return try {
             val apiResponse = apiService.getFiveDayWeatherForecast(
                 params.latitude.toString(),
                 params.longitude.toString()
             )
-            Either.Right(apiResponse)
+            ResultState.Success(apiResponse)
         } catch (e: Exception) {
-            Either.Left(errorFactory.produce(e))
+            ResultState.Error(errorFactory.produce(e), null)
         }
     }
 }

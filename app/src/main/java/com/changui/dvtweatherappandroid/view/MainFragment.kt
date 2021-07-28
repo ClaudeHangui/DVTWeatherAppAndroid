@@ -12,10 +12,10 @@ import androidx.lifecycle.lifecycleScope
 import com.changui.dvtweatherappandroid.R
 import com.changui.dvtweatherappandroid.databinding.MainFragmentBinding
 import com.changui.dvtweatherappandroid.domain.error.Failure
-import com.changui.dvtweatherappandroid.domain.error.FailureWithCache
 import com.changui.dvtweatherappandroid.domain.model.CurrentWeatherUIModel
 import com.changui.dvtweatherappandroid.domain.model.UserLocationModel
 import com.changui.dvtweatherappandroid.domain.model.WeatherForecastUIModelListItem
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import com.changui.dvtweatherappandroid.presentation.MainViewModel
 import com.changui.dvtweatherappandroid.presentation.showPermanentlyDeniedDialog
 import com.changui.dvtweatherappandroid.presentation.showRationaleDialog
@@ -92,117 +92,126 @@ class MainFragment : Fragment(R.layout.main_fragment), GoogleApiClient.Connectio
 
         viewModel.getCurrentWeatherLiveData().observe(
             viewLifecycleOwner,
-            { currentWeather: CurrentWeatherUIModel -> renderCurrentWeatherUI(currentWeather) }
+            { currentWeather: ResultState<CurrentWeatherUIModel> -> renderCurrentWeatherUI(currentWeather) }
         )
-        viewModel.getCurrentWeatherErrorLiveData().observe(
-            viewLifecycleOwner,
-            { failure: FailureWithCache<CurrentWeatherUIModel> ->
-                renderCurrentWeatherFailureState(
-                    failure
-                )
-            }
-        )
+
         viewModel.getForecastWeatherListLiveData().observe(
             viewLifecycleOwner,
-            { items: MutableList<WeatherForecastUIModelListItem> -> renderForecastWeatherUI(items) }
+            { items: ResultState<MutableList<WeatherForecastUIModelListItem>> -> renderForecastWeatherUI(items) }
         )
+
+        /*
         viewModel.getForecastWeatherListFailureLiveData().observe(
             viewLifecycleOwner,
-            { failure: FailureWithCache<MutableList<WeatherForecastUIModelListItem>> ->
+            { failure: ResultState<MutableList<WeatherForecastUIModelListItem>> ->
                 renderForecastWeatherFailureState(
                     failure
                 )
             }
         )
+        */
         viewModel.getLoadingLiveData().observe(
             viewLifecycleOwner,
             { showLoading: Boolean -> setLoadingState(showLoading) }
         )
     }
 
-    private fun renderForecastWeatherFailureState(
-        failure: FailureWithCache<MutableList<WeatherForecastUIModelListItem>>
-    ) {
-        val failureDescription = when (failure.failure) {
-            is Failure.NetworkError -> getString(R.string.error_network_desc)
-            is Failure.ServerError -> getString(R.string.error_internal_server_desc)
-            is Failure.BadRequestError -> getString(R.string.error_forbidden_desc)
-            is Failure.GatewayError -> getString(R.string.error_gateway_desc)
-            else -> getString(R.string.error_unknown_desc)
-        }
-
-        if (failure.data.isNullOrEmpty()) {
-            binding?.forecastWeatherErrorMessage?.text = failureDescription
-            binding?.forecastWeatherErrorMessageBtn?.setOnClickListener {
-                locationModel?.let { it1 ->
-                    setLoadingState(true)
-                    binding?.forecastWeatherErrorGroup?.visibility = View.GONE
-                    binding?.currentWeatherErrorGroup?.visibility = View.GONE
-                    viewModel.getForecastWeather(it1)
-                }
-            }
-            binding?.forecastWeatherErrorGroup?.visibility = View.VISIBLE
-        } else {
-            renderForecastWeatherUI(failure.data)
-            showSnackBar(failureDescription)
-        }
-    }
-
     private fun setLoadingState(showLoading: Boolean) {
         binding?.progress?.visibility = if (showLoading && binding?.progress?.visibility == View.GONE) View.VISIBLE else View.GONE
     }
 
-    private fun renderCurrentWeatherFailureState(failure: FailureWithCache<CurrentWeatherUIModel>) {
-        val failureDescription = when (failure.failure) {
-            is Failure.NetworkError -> getString(R.string.error_network_desc)
-            is Failure.ServerError -> getString(R.string.error_internal_server_desc)
-            is Failure.BadRequestError -> getString(R.string.error_forbidden_desc)
-            is Failure.GatewayError -> getString(R.string.error_gateway_desc)
-            else -> getString(R.string.error_unknown_desc)
-        }
+    private fun renderForecastWeatherUI(resultState: ResultState<MutableList<WeatherForecastUIModelListItem>>) {
+        when(resultState) {
+            is ResultState.Success -> {
+                setForecastWeatherData(resultState.data)
+            }
+            is ResultState.Error -> {
+                val failureDescription = when (resultState.failure) {
+                    is Failure.NetworkError -> getString(R.string.error_network_desc)
+                    is Failure.ServerError -> getString(R.string.error_internal_server_desc)
+                    is Failure.BadRequestError -> getString(R.string.error_forbidden_desc)
+                    is Failure.GatewayError -> getString(R.string.error_gateway_desc)
+                    else -> getString(R.string.error_unknown_desc)
+                }
 
-        if (failure.data == CurrentWeatherUIModel.EMPTY) {
-            binding?.currentWeatherErrorMessage?.text = failureDescription
-            binding?.currentWeatherErrorMessageBtn?.setOnClickListener {
-                locationModel?.let { it1 ->
-                    setLoadingState(true)
-                    binding?.currentWeatherErrorGroup?.visibility = View.GONE
-                    binding?.forecastWeatherErrorGroup?.visibility = View.GONE
-                    viewModel.getCurrentWeather(it1)
+                if (resultState.data.isNullOrEmpty()) {
+                    binding?.forecastWeatherErrorMessage?.text = failureDescription
+                    binding?.forecastWeatherErrorMessageBtn?.setOnClickListener {
+                        locationModel?.let { it1 ->
+                            setLoadingState(true)
+                            binding?.forecastWeatherErrorGroup?.visibility = View.GONE
+                            binding?.currentWeatherErrorGroup?.visibility = View.GONE
+                            viewModel.getForecastWeather(it1)
+                        }
+                    }
+                    binding?.forecastWeatherErrorGroup?.visibility = View.VISIBLE
+                } else {
+                    setForecastWeatherData(resultState.data)
+                    showSnackBar(failureDescription)
                 }
             }
-            binding?.currentWeatherErrorGroup?.visibility = View.VISIBLE
-        } else {
-            renderCurrentWeatherUI(failure.data)
-            showSnackBar(failureDescription)
         }
-        locationModel?.let { viewModel.getForecastWeather(it) }
+
     }
 
-    private fun renderForecastWeatherUI(items: MutableList<WeatherForecastUIModelListItem>) {
-        items.forEach { it.weather_type_separator = itemTypeSeparator }
-        adapter.setData(items)
+    private fun setForecastWeatherData(data: MutableList<WeatherForecastUIModelListItem>) {
+        data.forEach { it.weather_type_separator = itemTypeSeparator }
+        adapter.setData(data)
         binding?.forecastWeatherSuccessGroup?.visibility = View.VISIBLE
     }
 
-    private fun renderCurrentWeatherUI(currentWeather: CurrentWeatherUIModel) {
-        itemTypeSeparator = currentWeather.weather_type.toWeatherTypeSeparator().first
+    private fun renderCurrentWeatherUI(currentWeather: ResultState<CurrentWeatherUIModel>) {
+        when(currentWeather) {
+            is ResultState.Success -> {
+                setCurrentWeatherData(currentWeather.data)
+            }
+            is ResultState.Error -> {
+                val failureDescription = when (currentWeather.failure) {
+                    is Failure.NetworkError -> getString(R.string.error_network_desc)
+                    is Failure.ServerError -> getString(R.string.error_internal_server_desc)
+                    is Failure.BadRequestError -> getString(R.string.error_forbidden_desc)
+                    is Failure.GatewayError -> getString(R.string.error_gateway_desc)
+                    else -> getString(R.string.error_unknown_desc)
+                }
+
+                if (currentWeather.data == CurrentWeatherUIModel.EMPTY) {
+                    binding?.currentWeatherErrorMessage?.text = failureDescription
+                    binding?.currentWeatherErrorMessageBtn?.setOnClickListener {
+                        locationModel?.let { it1 ->
+                            setLoadingState(true)
+                            binding?.currentWeatherErrorGroup?.visibility = View.GONE
+                            binding?.forecastWeatherErrorGroup?.visibility = View.GONE
+                            viewModel.getCurrentWeather(it1)
+                        }
+                    }
+                    binding?.currentWeatherErrorGroup?.visibility = View.VISIBLE
+                } else {
+                    currentWeather.data?.let { setCurrentWeatherData(it) }
+                    showSnackBar(failureDescription)
+                }
+                locationModel?.let { viewModel.getForecastWeather(it) }
+            }
+        }
+    }
+
+    private fun setCurrentWeatherData(data: CurrentWeatherUIModel) {
+        itemTypeSeparator = data.weather_type.toWeatherTypeSeparator().first
         locationModel?.let { viewModel.getForecastWeather(it) }
         binding?.weatherImageTop?.setImageResource(
-            currentWeather.weather_type.toViewBackground().first
+            data.weather_type.toViewBackground().first
         )
         binding?.weatherImageBottom?.setBackgroundResource(
-            currentWeather.weather_type.toViewBackground().second
+            data.weather_type.toViewBackground().second
         )
-        binding?.currentWeatherTemp?.text = currentWeather.current_temp.toString().plus("°")
-        binding?.currentWeatherLabel?.text = currentWeather.weather_type.toWeatherTypeSeparator().second.toUpperCase(
+        binding?.currentWeatherTemp?.text = data.current_temp.toString().plus("°")
+        binding?.currentWeatherLabel?.text = data.weather_type.toWeatherTypeSeparator().second.toUpperCase(
             Locale.getDefault()
         )
-        binding?.minTempCurrentWeather?.text = currentWeather.min_temp.toTempLabel("min")
-        binding?.currentTempCurrentWeather?.text = currentWeather.current_temp.toTempLabel(
+        binding?.minTempCurrentWeather?.text = data.min_temp.toTempLabel("min")
+        binding?.currentTempCurrentWeather?.text = data.current_temp.toTempLabel(
             "current"
         )
-        binding?.maxTempCurrentWeather?.text = currentWeather.max_temp.toTempLabel("max")
+        binding?.maxTempCurrentWeather?.text = data.max_temp.toTempLabel("max")
 
         binding?.currentWeatherSuccessGroup?.visibility = View.VISIBLE
         binding?.moreLabel?.setOnClickListener {

@@ -1,6 +1,5 @@
 package com.changui.dvtweatherappandroid
 
-import arrow.core.Either
 import com.changui.dvtweatherappandroid.data.WeatherForecastRepositoryImpl
 import com.changui.dvtweatherappandroid.data.local.CurrentWeatherLocalDataStore
 import com.changui.dvtweatherappandroid.data.local.CurrentWeatherLocalModel
@@ -11,17 +10,14 @@ import com.changui.dvtweatherappandroid.data.mapper.RemoteToLocalWeatherForecast
 import com.changui.dvtweatherappandroid.data.remote.*
 import com.changui.dvtweatherappandroid.data.remote.commonapimodel.*
 import com.changui.dvtweatherappandroid.domain.error.Failure
-import com.changui.dvtweatherappandroid.domain.error.FailureWithCache
 import com.changui.dvtweatherappandroid.domain.model.CurrentWeatherUIModel
 import com.changui.dvtweatherappandroid.domain.model.WeatherForecastUIModelListItem
 import com.changui.dvtweatherappandroid.domain.model.WeatherPayloadParams
-import com.changui.dvtweatherappandroid.domain.scope.CoroutineDispatchers
-import com.changui.dvtweatherappandroid.domain.scope.CoroutineDispatchersImpl
+import com.changui.dvtweatherappandroid.domain.result.ResultState
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.runBlocking
-import org.amshove.kluent.`should be`
 import org.amshove.kluent.shouldBeInstanceOf
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -37,16 +33,12 @@ internal class WeatherForecastRepositoryImplTest {
     @MockK lateinit var weatherForecastRemoteDataStore: WeatherForecastRemoteDataStore
     @MockK lateinit var weatherForecastLocalDataStore: WeatherForecastLocalDataStore
     @MockK lateinit var currentWeatherLocalDataStore: CurrentWeatherLocalDataStore
-    @MockK lateinit var dispatchers: CoroutineDispatchers
     private lateinit var weatherForecastRepositoryImpl: WeatherForecastRepositoryImpl
 
 
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
-        coEvery {
-            dispatchers.io
-        } returns CoroutineDispatchersImpl().io
 
         weatherForecastRepositoryImpl = WeatherForecastRepositoryImpl(
             currentWeatherRemoteDataStore,
@@ -54,9 +46,7 @@ internal class WeatherForecastRepositoryImplTest {
             remoteToLocalWeatherForecastMapper,
             weatherForecastRemoteDataStore,
             weatherForecastLocalDataStore,
-            currentWeatherLocalDataStore,
-            dispatchers
-        )
+            currentWeatherLocalDataStore)
     }
 
     @Nested
@@ -71,23 +61,21 @@ internal class WeatherForecastRepositoryImplTest {
                 "", CurrentWeatherSys("France", 2, 3, 4, 5), 5, 2, emptyList(), Wind(1, 2.44, 5.788)
             )
 
-            coEvery { currentWeatherRemoteDataStore.fetchCurrentWeather(params) } returns Either.Right(expectedApiResponse)
+            coEvery { currentWeatherRemoteDataStore.fetchCurrentWeather(params) } returns ResultState.Success(expectedApiResponse)
             coEvery { currentWeatherMapper.map(expectedApiResponse, null) } returns expectedLocalModel
             coEvery { currentWeatherLocalDataStore.saveCurrentWeather(expectedLocalModel) } returns Unit
             coEvery { currentWeatherLocalDataStore.getCurrentData(params.placeId) } returns expectedLocalModel
             val actualResponse = runBlocking { weatherForecastRepositoryImpl.fetchCurrentWeather(params) }
-            actualResponse.isRight() `should be` true
-            actualResponse shouldBeInstanceOf Either.Right(CurrentWeatherUIModel::class)::class
+            actualResponse shouldBeInstanceOf ResultState.Success(CurrentWeatherUIModel::class)::class
         }
 
         @Test
         fun `when fetching current weather from repository returns failure  due to server error`() {
             val failure = Failure.ServerError
-            coEvery { currentWeatherRemoteDataStore.fetchCurrentWeather(params) } returns Either.Left(failure)
+            coEvery { currentWeatherRemoteDataStore.fetchCurrentWeather(params) } returns ResultState.Error(failure, null)
             coEvery { currentWeatherLocalDataStore.getCurrentData(params.placeId) } returns expectedLocalModel
             val actualResponse = runBlocking { weatherForecastRepositoryImpl.fetchCurrentWeather(params) }
-            actualResponse.isLeft() `should be` true
-            actualResponse shouldBeInstanceOf Either.Left(FailureWithCache::class)::class
+            actualResponse shouldBeInstanceOf ResultState.Error::class
         }
     }
 
@@ -122,26 +110,24 @@ internal class WeatherForecastRepositoryImplTest {
                 2
             )
 
-            coEvery { weatherForecastRemoteDataStore.fetchWeatherForecast(params) } returns Either.Right(expectedApiResponse)
+            coEvery { weatherForecastRemoteDataStore.fetchWeatherForecast(params) } returns ResultState.Success(expectedApiResponse)
             coEvery { remoteToLocalWeatherForecastMapper.map(expectedApiResponse) } returns expectedLocalList
             coEvery { weatherForecastLocalDataStore.clearAllWeatherForecast() } returns Unit
             coEvery { weatherForecastLocalDataStore.saveWeatherForecasts(expectedLocalList) } returns Unit
             coEvery { weatherForecastLocalDataStore.getWeatherForecastList() } returns expectedLocalList
 
             val actualResponse = runBlocking { weatherForecastRepositoryImpl.fetchWeatherForecastList(params) }
-            actualResponse.isRight() `should be` true
-            actualResponse.shouldBeInstanceOf<Either.Right<MutableList<WeatherForecastUIModelListItem>>>()
+            actualResponse.shouldBeInstanceOf<ResultState.Success<MutableList<WeatherForecastUIModelListItem>>>()
         }
 
         @Test
         fun `when fetching forecast weather repository returns failure due to network error`() {
             val failure = Failure.NetworkError
-            coEvery { weatherForecastRemoteDataStore.fetchWeatherForecast(params) } returns Either.Left(failure)
+            coEvery { weatherForecastRemoteDataStore.fetchWeatherForecast(params) } returns ResultState.Error(failure, null)
             coEvery { weatherForecastLocalDataStore.getWeatherForecastList() } returns expectedLocalList
 
             val actualResponse = runBlocking { weatherForecastRepositoryImpl.fetchWeatherForecastList(params) }
-            actualResponse.isLeft() `should be` true
-            actualResponse shouldBeInstanceOf Either.Left(FailureWithCache::class)::class
+            actualResponse shouldBeInstanceOf ResultState.Error::class
         }
 
     }
